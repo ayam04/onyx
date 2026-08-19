@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlalchemy import delete, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, load_only, selectinload
@@ -327,6 +329,7 @@ def upsert_llm_provider(
                 max_input_tokens=model_config.max_input_tokens,
                 display_name=model_config.display_name,
                 custom_display_name=model_config.custom_display_name,
+                model_settings=model_config.provided_model_settings(),
             )
         else:
             insert_new_model_configuration__no_commit(
@@ -338,6 +341,7 @@ def upsert_llm_provider(
                 max_input_tokens=model_config.max_input_tokens,
                 display_name=model_config.display_name,
                 custom_display_name=model_config.custom_display_name,
+                model_settings=model_config.provided_model_settings(),
             )
 
     # Make sure the relationship table stays up to date
@@ -1161,6 +1165,7 @@ def insert_new_model_configuration__no_commit(
     max_input_tokens: int | None,
     display_name: str | None,
     custom_display_name: str | None = None,
+    model_settings: dict[str, Any] | None = None,
 ) -> int | None:
     result = db_session.execute(
         insert(ModelConfiguration)
@@ -1172,6 +1177,7 @@ def insert_new_model_configuration__no_commit(
             display_name=display_name,
             custom_display_name=custom_display_name,
             supports_image_input=LLMModelFlowType.VISION in supported_flows,
+            **(model_settings or {}),
         )
         .on_conflict_do_nothing()
         .returning(ModelConfiguration.id)
@@ -1200,6 +1206,7 @@ def update_model_configuration__no_commit(
     max_input_tokens: int | None,
     display_name: str | None,
     custom_display_name: str | None = None,
+    model_settings: dict[str, Any] | None = None,
 ) -> None:
     result = db_session.execute(
         update(ModelConfiguration)
@@ -1209,6 +1216,7 @@ def update_model_configuration__no_commit(
             display_name=display_name,
             custom_display_name=custom_display_name,
             supports_image_input=LLMModelFlowType.VISION in supported_flows,
+            **(model_settings or {}),
         )
         .where(ModelConfiguration.id == model_configuration_id)
         .returning(ModelConfiguration)
